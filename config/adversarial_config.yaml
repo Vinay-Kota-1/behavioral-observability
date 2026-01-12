@@ -1,0 +1,250 @@
+# Adversarial Injection + Business Impact Configuration
+# Consolidated config: defines anomaly scenarios for training AND business impact for inference
+
+database:
+  url: "postgresql://vinaykota:12345678@localhost:5432/fintech_lab"
+  schema: "sentinelrisk"
+  raw_events_table: "raw_events"
+  labels_table: "labels_outcomes"
+
+injection:
+  default_batch_size: 1000
+  label_anomalies: true
+
+# Scenarios: used for both training (injection) and inference (business impact)
+scenarios:
+
+  # ==========================================================================
+  # CERT-based: Authentication anomalies
+  # ==========================================================================
+  
+  suspicious_login_burst:
+    description: "Rapid successive logins from same user - potential credential stuffing or ATO"
+    source_dataset: "CERT"
+    entity_type: "user"
+    event_type: "login"
+    status: "success"
+    
+    anomaly_label:
+      label_type: "anomaly"
+      label: "suspicious_login"
+      severity: 3
+    
+    injection_pattern:
+      count: 20
+      time_window_seconds: 300
+      time_distribution: "uniform"
+    
+    # Business impact (used during inference/reporting)
+    business_impact:
+      category: "Security - Account Takeover"
+      risk_level: "high"
+      estimated_cost_per_incident: 500
+      recommended_action: "Lock account, notify user, require password reset"
+      compliance_flags: ["SOC2", "GDPR"]
+      escalation_path: "security_team"
+    
+  off_hours_login:
+    description: "Login activity during unusual hours (2-5 AM) - insider threat indicator"
+    source_dataset: "CERT"
+    entity_type: "user"
+    event_type: "login"
+    status: "success"
+    
+    anomaly_label:
+      label_type: "anomaly"
+      label: "off_hours_activity"
+      severity: 2
+    
+    injection_pattern:
+      count: 5
+      hour_range: [2, 5]
+      time_distribution: "random"
+    
+    business_impact:
+      category: "Security - Insider Threat"
+      risk_level: "medium"
+      estimated_cost_per_incident: 100
+      recommended_action: "Flag for review, verify with employee"
+      compliance_flags: ["SOC2"]
+      escalation_path: "hr_security"
+
+  # ==========================================================================
+  # IEEE_CIS/CREDITCARD: Transaction fraud
+  # ==========================================================================
+  
+  transaction_velocity_spike:
+    description: "Unusually high transaction frequency - potential card testing or fraud"
+    source_dataset: "IEEE_CIS"
+    entity_type: "user"
+    event_type: "transaction_auth"
+    status: "success"
+    channel: "payment"
+    
+    anomaly_label:
+      label_type: "fraud"
+      label: "velocity_anomaly"
+      severity: 4
+    
+    injection_pattern:
+      count: 50
+      time_window_seconds: 3600
+      amount_distribution:
+        type: "normal"
+        mean: 50
+        std: 20
+      time_distribution: "poisson"
+    
+    business_impact:
+      category: "Fraud - Card Testing"
+      risk_level: "high"
+      estimated_cost_per_incident: 1000
+      recommended_action: "Block card, contact customer, investigate transactions"
+      compliance_flags: ["PCI-DSS"]
+      escalation_path: "fraud_team"
+
+  high_value_sudden:
+    description: "Sudden high-value transaction after period of low activity"
+    source_dataset: "CREDITCARD"
+    entity_type: "user"
+    event_type: "transaction_auth"
+    status: "success"
+    channel: "card_present"
+    
+    anomaly_label:
+      label_type: "fraud"
+      label: "high_value_sudden"
+      severity: 5
+    
+    injection_pattern:
+      silence_before_hours: 168
+      count: 1
+      amount_distribution:
+        type: "fixed"
+        value: 5000
+    
+    business_impact:
+      category: "Fraud - Stolen Card"
+      risk_level: "critical"
+      estimated_cost_per_incident: 5000
+      recommended_action: "Decline transaction, block card, alert customer immediately"
+      compliance_flags: ["PCI-DSS", "Regulation E"]
+      escalation_path: "fraud_team"
+
+  round_amount_pattern:
+    description: "Multiple transactions with suspiciously round amounts - money laundering indicator"
+    source_dataset: "IEEE_CIS"
+    entity_type: "user"
+    event_type: "transaction_auth"
+    status: "success"
+    channel: "payment"
+    
+    anomaly_label:
+      label_type: "fraud"
+      label: "round_amounts"
+      severity: 3
+    
+    injection_pattern:
+      count: 10
+      time_window_seconds: 86400
+      amount_distribution:
+        type: "round"
+        values: [100, 200, 500, 1000]
+    
+    business_impact:
+      category: "Fraud - Money Laundering"
+      risk_level: "high"
+      estimated_cost_per_incident: 10000
+      recommended_action: "File SAR, freeze account pending investigation"
+      compliance_flags: ["BSA", "AML", "FinCEN"]
+      escalation_path: "compliance_team"
+
+  # ==========================================================================
+  # NAB: Infrastructure anomalies
+  # ==========================================================================
+  
+  metric_spike:
+    description: "Sudden spike in system metric - infrastructure anomaly"
+    source_dataset: "NAB"
+    entity_type: "system_metric"
+    event_type: "metric_observation"
+    status: "success"
+    
+    anomaly_label:
+      label_type: "anomaly"
+      label: "metric_spike"
+      severity: 4
+    
+    injection_pattern:
+      count: 10
+      time_window_seconds: 600
+      amount_distribution:
+        type: "spike"
+        baseline_mean: 30
+        spike_multiplier: 5
+    
+    business_impact:
+      category: "Infrastructure - Performance"
+      risk_level: "high"
+      estimated_cost_per_minute: 200
+      recommended_action: "Page on-call engineer, check dashboards, prepare rollback"
+      compliance_flags: ["SLA"]
+      escalation_path: "sre_team"
+
+  metric_drift:
+    description: "Gradual drift in system metric - potential degradation"
+    source_dataset: "NAB"
+    entity_type: "system_metric"
+    event_type: "metric_observation"
+    status: "success"
+    
+    anomaly_label:
+      label_type: "anomaly"
+      label: "metric_drift"
+      severity: 2
+    
+    injection_pattern:
+      count: 20
+      time_window_seconds: 7200
+      amount_distribution:
+        type: "drift"
+        start_value: 30
+        end_value: 80
+        noise: 5
+    
+    business_impact:
+      category: "Infrastructure - Degradation"
+      risk_level: "medium"
+      estimated_cost_per_day: 500
+      recommended_action: "Schedule investigation, monitor closely"
+      compliance_flags: ["SLA"]
+      escalation_path: "sre_team"
+
+# ==========================================================================
+# Escalation paths (referenced by scenarios)
+# ==========================================================================
+escalation_paths:
+  security_team:
+    name: "Security Operations"
+    response_sla_minutes: 15
+    contact: "security@company.com"
+  
+  fraud_team:
+    name: "Fraud Prevention"
+    response_sla_minutes: 5
+    contact: "fraud@company.com"
+  
+  compliance_team:
+    name: "Compliance/AML"
+    response_sla_minutes: 60
+    contact: "compliance@company.com"
+  
+  hr_security:
+    name: "HR Security"
+    response_sla_minutes: 120
+    contact: "hr-security@company.com"
+  
+  sre_team:
+    name: "Site Reliability Engineering"
+    response_sla_minutes: 10
+    contact: "oncall@company.com"

@@ -1,0 +1,86 @@
+# Feature Configuration for Point-in-Time Feature Generation
+# This config drives the SQL generation in feature_builder.py
+
+database:
+  url: "postgresql://vinaykota:12345678@localhost:5432/fintech_lab"
+  schema: "sentinelrisk"
+  source_table: "raw_events"
+  labels_table: "labels_outcomes"
+  features_table: "features"
+
+# Entity grouping - features are computed per entity
+entity:
+  partition_columns:
+    - entity_id
+  order_column: ts
+
+# Time window definitions
+time_windows:
+  - name: "1h"
+    interval: "1 hour"
+  - name: "24h"
+    interval: "24 hours"
+
+# Features to generate
+features:
+  # Count-based features
+  event_counts:
+    enabled: true
+    windows: ["1h", "24h"]
+    # Generates: event_count_1h, event_count_24h
+
+  # Distinct count features
+  distinct_counts:
+    enabled: true
+    windows: ["24h"]
+    columns:
+      - event_type
+    # Generates: distinct_event_types_24h
+
+  # Amount/metric statistics
+  metric_stats:
+    enabled: true
+    windows: ["24h"]
+    column: amount
+    aggregations:
+      - mean
+      - std
+    # Generates: metric_mean_24h, metric_std_24h, metric_z_24h
+
+  # Delta features (difference from previous)
+  deltas:
+    enabled: true
+    windows: ["1h", "24h"]
+    column: amount
+    include_pct_change: true
+    # Generates: delta_1h, delta_24h, pct_change_24h
+
+  # Time since last event
+  time_since_last:
+    enabled: true
+    # Generates: time_since_last_event_seconds
+
+  # Time since last label (requires join with labels table)
+  time_since_last_label:
+    enabled: true
+    label_types:
+      - "fraud"
+      - "anomaly"
+    # Generates: time_since_last_label_seconds, time_since_last_anomaly_seconds
+
+  # Higher-order derivatives
+  higher_order_diffs:
+    enabled: true
+    column: amount
+    order: 2
+    # Generates: amount_diff_2 (second derivative)
+
+  # Seasonality / Fourier features
+  seasonality:
+    enabled: true
+    periods:
+      - name: "hourly"
+        period_seconds: 3600
+      - name: "daily"
+        period_seconds: 86400
+    # Generates: hour_of_day, day_of_week, sin_hourly, cos_hourly, sin_daily, cos_daily

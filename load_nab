@@ -1,0 +1,137 @@
+import os, glob, json
+import pandas as pd
+import json
+
+from ingest_postgres import (
+    make_engine, ensure_ingest_batch, stable_event_id,
+    insert_raw_events, insert_labels, RAW_EVENTS_COLS, LABELS_COLS
+)
+
+# ---- CONFIG ----
+NAB_ROOT = "NAB-master"  # change this
+DATA_DIR = os.path.join(NAB_ROOT, "data", "realKnownCause")
+LABELS_PATH = os.path.join(NAB_ROOT, "labels", "combined_labels.json")
+
+DATABASE_URL = "postgresql://vinaykota:12345678@localhost:5432/fintech_lab"
+
+DB_URL = DATABASE_URL
+engine = make_engine(DB_URL)
+
+INGEST_BATCH_ID = "nab_realKnownCause_001"
+SOURCE_DATASET = "NAB"
+
+
+def build_nab_events(csv_path: str) -> pd.DataFrame:
+    metric_id = os.path.splitext(os.path.basename(csv_path))[0]
+    df = pd.read_csv(csv_path)
+
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+    df = df.dropna(subset=["timestamp"])
+
+    events = []
+    for ts, val in zip(df["timestamp"], df["value"]):
+        eid = stable_event_id("NAB", metric_id, ts.isoformat())
+        events.append({
+            "event_id": eid,
+            "ts": ts,
+            "entity_type": "system_metric",
+            "entity_id": metric_id,
+            "event_type": "metric_observation",
+            "status": "success",
+            "amount": val,
+            "currency": None,
+
+            "user_id": None,
+            "merchant_id": None,
+            "api_client_id": None,
+            "device_id": None,
+            "ip_hash": None,
+            "ua_hash": None,
+            "endpoint": None,
+            "error_code": None,
+            "channel": None,
+
+            "source_dataset": SOURCE_DATASET,
+            "ingest_batch_id": INGEST_BATCH_ID,
+            "metadata": {"nab_file": os.path.basename(csv_path)},
+        })
+
+    out = pd.DataFrame(events)
+    for c in RAW_EVENTS_COLS:
+        if c not in out.columns:
+            out[c] = None
+    return out
+
+
+def build_nab_labels(LABELS_PATH, INGEST_BATCH_ID, SOURCE_DATASET):
+    with open(LABELS_PATH, "r") as f:
+        labels = json.load(f)
+
+    def parse_window(w: str):
+        parts = w.strip().split()
+        # labels in combined_labels.json are either a single timestamp
+        # (point anomaly) or a start+end pair. Accept both formats.
+        if len(parts) >= 4:
+            return " ".join(parts[:2]), " ".join(parts[2:4])
+        if len(parts) >= 2:
+            # single timestamp (date + time) -> start only
+            return " ".join(parts[:2]), None
+        return None, None
+
+    rows = []
+    for path_key, windows in labels.items():
+        # robust filter
+        if "realKnownCause" not in path_key:
+            continue
+
+        metric_id = os.path.splitext(os.path.basename(path_key))[0]
+
+        for w in windows:
+            start_s, end_s = parse_window(w)
+            if not start_s:
+                continue
+
+            ts_start = pd.to_datetime(start_s, utc=True, errors="coerce")
+            ts_end = pd.to_datetime(end_s, utc=True, errors="coerce")
+
+            if pd.isna(ts_start):
+                continue
+
+            rows.append({
+                "ts_start": ts_start,
+                "ts_end": None if pd.isna(ts_end) else ts_end,
+                "label_scope": "system_metric",
+                "scope_id": metric_id,
+                "label_type": "anomaly",
+                "label": 1,
+                "severity": 3,
+                "source_dataset": SOURCE_DATASET,
+                "ingest_batch_id": INGEST_BATCH_ID,
+                "metadata": {"nab_label_path": path_key},
+            })
+
+    return pd.DataFrame(rows)
+
+
+def main():
+    ensure_ingest_batch(engine, INGEST_BATCH_ID, SOURCE_DATASET, notes="NAB realKnownCause + combined_labels.json")
+
+    total = 0
+    for csv_path in sorted(glob.glob(os.path.join(DATA_DIR, "*.csv"))):
+        df_events = build_nab_events(csv_path)
+        n = insert_raw_events(engine, df_events)
+        total += n
+        print(f"Loaded {n:,} rows from {os.path.basename(csv_path)}")
+
+    df_labels = build_nab_labels(LABELS_PATH, INGEST_BATCH_ID, SOURCE_DATASET)
+    if df_labels is None or df_labels.empty:
+        nlab = 0
+        print("No NAB label windows found; skipping label insert.")
+    else:
+        nlab = insert_labels(engine, df_labels)
+    print(f"Loaded {total:,} total NAB events")
+    print(f"Loaded {nlab:,} NAB label windows")
+
+
+if __name__ == "__main__":
+    main()

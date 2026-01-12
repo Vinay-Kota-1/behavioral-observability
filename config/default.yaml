@@ -1,0 +1,82 @@
+# Fraud Detection System Configuration
+# Default parameters for windows, thresholds, budgets, and weights
+
+# Feature Engineering Windows (in hours)
+feature_windows:
+  user:
+    - 1    # 1 hour
+    - 6    # 6 hours
+    - 24   # 24 hours
+    - 168  # 1 week
+  merchant:
+    - 1
+    - 6
+    - 24
+  api_client:
+    - 1
+    - 6
+    - 24
+
+# Model Router Configuration
+router:
+  # Decision criteria
+  has_labels: true          # Use supervised models if labels available
+  min_history_days: 30       # Minimum days of history required for time series models
+  alert_budget_per_day: 100 # Maximum alerts per day
+  
+  # Model selection weights
+  weights:
+    supervised: 0.4
+    unsupervised: 0.3
+    time_series: 0.3
+
+# Model Thresholds
+thresholds:
+  isolation_forest: 0.5
+  xgboost: 0.5
+  isolation_forest_unsupervised: 0.5
+  state_space: 0.5
+  ewma: 0.5
+  stl: 0.5
+
+# Alerting Configuration
+alerting:
+  dedup_window_hours: 24    # Deduplication window
+  daily_alert_budget: 100   # Maximum alerts per day
+  severity_thresholds:
+    low: 0.3
+    medium: 0.5
+    high: 0.7
+    critical: 0.9
+
+# Monitoring Configuration
+monitoring:
+  drift_window_days: 30     # Window for drift calculation
+  psi_threshold: 0.2        # PSI threshold for drift detection
+  js_threshold: 0.1         # JS divergence threshold
+  alert_volume_window_hours: 24
+
+# Score Ensembler Configuration
+ensembler:
+  method: "weighted_average"  # Options: weighted_average, max, min, median
+  weights:
+    supervised: 0.4
+    unsupervised: 0.3
+    time_series: 0.3
+
+# State Space Model Configuration
+state_space:
+  kalman_filter:
+    observation_covariance: 1.0
+    transition_covariance: 0.1
+  structural_time_series:
+    trend: true
+    seasonal: true
+    seasonal_periods: 24  # hours
+
+# Database Configuration
+database:
+  url: "postgresql://vinaykota:12345678@localhost:5432/fintech_lab"
+  schema: "sentinelrisk"
+  batch_size: 10000
+

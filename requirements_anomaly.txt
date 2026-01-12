@@ -1,0 +1,21 @@
+# Requirements for Anomaly Detection Framework
+
+# Core dependencies
+numpy>=1.21.0
+pandas>=1.3.0
+scikit-learn>=1.0.0
+
+# Visualization
+matplotlib>=3.4.0
+seaborn>=0.11.0
+
+# Deep learning (optional, for Autoencoder and LSTM)
+tensorflow>=2.8.0
+
+# Time series (optional, for ARIMA)
+statsmodels>=0.13.0
+
+# Database (optional, for PostgreSQL loader)
+sqlalchemy>=1.4.0
+psycopg2-binary>=2.9.0
+

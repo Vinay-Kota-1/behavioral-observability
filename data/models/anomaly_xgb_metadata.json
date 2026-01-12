@@ -1,0 +1,130 @@
+{
+  "trained_at": "2026-01-11T18:21:38.022231",
+  "metrics": {
+    "roc_auc": 0.9571782939516722,
+    "f1": 0.6929824561403509,
+    "precision": 0.6210691823899371,
+    "recall": 0.7837301587301587,
+    "confusion_matrix": [
+      [
+        9255,
+        241
+      ],
+      [
+        109,
+        395
+      ]
+    ],
+    "train_size": 40000,
+    "test_size": 10000,
+    "feature_count": 17,
+    "anomaly_rate_train": 0.05045,
+    "anomaly_rate_test": 0.0504
+  },
+  "features": [
+    "event_count_1h",
+    "event_count_24h",
+    "metric_mean_24h",
+    "metric_std_24h",
+    "metric_z_24h",
+    "delta_1",
+    "pct_change_1h",
+    "pct_change_24h",
+    "time_since_last_event_seconds",
+    "amount_diff_1",
+    "amount_diff_2",
+    "hour_of_day",
+    "day_of_week",
+    "sin_hourly",
+    "cos_hourly",
+    "sin_daily",
+    "cos_daily"
+  ],
+  "feature_importance": [
+    {
+      "feature": "event_count_24h",
+      "importance": 0.4762679934501648
+    },
+    {
+      "feature": "time_since_last_event_seconds",
+      "importance": 0.19513586163520813
+    },
+    {
+      "feature": "metric_std_24h",
+      "importance": 0.16420504450798035
+    },
+    {
+      "feature": "day_of_week",
+      "importance": 0.02215665951371193
+    },
+    {
+      "feature": "metric_mean_24h",
+      "importance": 0.020959781482815742
+    },
+    {
+      "feature": "event_count_1h",
+      "importance": 0.018633663654327393
+    },
+    {
+      "feature": "sin_daily",
+      "importance": 0.016154883429408073
+    },
+    {
+      "feature": "cos_hourly",
+      "importance": 0.014306769706308842
+    },
+    {
+      "feature": "hour_of_day",
+      "importance": 0.01409921795129776
+    },
+    {
+      "feature": "cos_daily",
+      "importance": 0.01330803707242012
+    },
+    {
+      "feature": "sin_hourly",
+      "importance": 0.013257320038974285
+    },
+    {
+      "feature": "pct_change_24h",
+      "importance": 0.00799163430929184
+    },
+    {
+      "feature": "metric_z_24h",
+      "importance": 0.007407089229673147
+    },
+    {
+      "feature": "amount_diff_2",
+      "importance": 0.005328189581632614
+    },
+    {
+      "feature": "delta_1",
+      "importance": 0.004666406195610762
+    },
+    {
+      "feature": "amount_diff_1",
+      "importance": 0.003081241622567177
+    },
+    {
+      "feature": "pct_change_1h",
+      "importance": 0.0030401828698813915
+    }
+  ],
+  "config": {
+    "sample_size": 50000,
+    "test_size": 0.2,
+    "xgb_params": {
+      "n_estimators": 100,
+      "max_depth": 6,
+      "learning_rate": 0.1,
+      "min_child_weight": 1,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "objective": "binary:logistic",
+      "eval_metric": "auc",
+      "use_label_encoder": false,
+      "random_state": 42,
+      "scale_pos_weight": 18.821605550049554
+    }
+  }
+}
