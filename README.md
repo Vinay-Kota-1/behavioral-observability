@@ -2,8 +2,6 @@
 
 > *From noise to signal: Catching the needles in haystacks of operational data*
 
-![Dashboard](./dashboard_preview.png)
-
 ---
 
 ## 🎯 The Problem
